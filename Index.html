@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Spending Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f8f9fa;
+    }
+    header {
+      background-color: #1e293b;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      padding: 20px;
+    }
+    canvas {
+      max-width: 100%;
+    }
+    .insights {
+      background: #ffffff;
+      padding: 20px;
+      margin-top: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Student Spending Dashboard</h1>
+    <p>Track. Visualize. Save smarter.</p>
+  </header>
+
+  <div class="container">
+    <h2>Spending Distribution</h2>
+    <canvas id="pieChart"></canvas>
+
+    <h2>Monthly Expenses by Category</h2>
+    <canvas id="barChart"></canvas>
+
+    <h2>Spending Over Time</h2>
+    <canvas id="lineChart"></canvas>
+
+    <div class="insights">
+      <h3>Smart Insights</h3>
+      <ul id="insightList"></ul>
+    </div>
+  </div>
+
+  <script>
+    // Mock Data
+    const categories = ["Food", "Transport", "Subscriptions", "Entertainment", "Books", "Misc"];
+    const monthlySpending = [120, 60, 90, 70, 30, 40];
+    const spendingOverMonths = [
+      { month: "Jan", amount: 350 },
+      { month: "Feb", amount: 300 },
+      { month: "Mar", amount: 420 },
+      { month: "Apr", amount: 390 },
+    ];
+
+    // Pie Chart
+    new Chart(document.getElementById("pieChart"), {
+      type: "pie",
+      data: {
+        labels: categories,
+        datasets: [{
+          label: "Spending Distribution",
+          data: monthlySpending,
+          backgroundColor: ["#4B77BE", "#26A69A", "#F39C12", "#C0392B", "#8E44AD", "#95A5A6"]
+        }]
+      },
+      options: {
+        responsive: true
+      }
+    });
+
+    // Bar Chart
+    new Chart(document.getElementById("barChart"), {
+      type: "bar",
+      data: {
+        labels: categories,
+        datasets: [{
+          label: "Monthly Expenses ($)",
+          data: monthlySpending,
+          backgroundColor: "#4B77BE"
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+
+    // Line Chart
+    new Chart(document.getElementById("lineChart"), {
+      type: "line",
+      data: {
+        labels: spendingOverMonths.map(d => d.month),
+        datasets: [{
+          label: "Total Monthly Spending",
+          data: spendingOverMonths.map(d => d.amount),
+          borderColor: "#C0392B",
+          fill: false
+        }]
+      },
+      options: {
+        responsive: true,
+        tension: 0.3
+      }
+    });
+
+    // Smart Insights (Basic AI-style logic)
+    const insightList = document.getElementById("insightList");
+    const total = monthlySpending.reduce((a, b) => a + b, 0);
+
+    monthlySpending.forEach((amt, i) => {
+      const percent = ((amt / total) * 100).toFixed(1);
+      if (percent > 25) {
+        const li = document.createElement("li");
+        li.textContent = `High spending on ${categories[i]} (${percent}%). Consider reducing to save more.`;
+        insightList.appendChild(li);
+      }
+    });
+  </script>
+</body>
+</html>
