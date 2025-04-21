@@ -8,133 +8,227 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #f8f9fa;
+      margin: 20px;
+      background-color: #f4f4f4;
+      transition: background-color 0.3s, color 0.3s;
     }
-    header {
-      background-color: #1e293b;
-      color: white;
-      padding: 20px;
+    body.dark-mode {
+      background-color: #333;
+      color: #fff;
+    }
+    h1 {
       text-align: center;
     }
-    .container {
-      max-width: 1000px;
-      margin: auto;
+    #dashboard, #insights {
+      background: white;
       padding: 20px;
+      margin-bottom: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    body.dark-mode #dashboard, body.dark-mode #insights {
+      background: #444;
     }
     canvas {
-      max-width: 100%;
+      max-width: 600px;
+      margin: auto;
+      display: block;
     }
-    .insights {
-      background: #ffffff;
-      padding: 20px;
+    .insight {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    .export-buttons {
+      text-align: center;
       margin-top: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .export-buttons button {
+      margin: 0 10px;
+      padding: 10px 15px;
+      font-size: 14px;
+      border: none;
+      border-radius: 5px;
+      background-color: #007BFF;
+      color: white;
+      cursor: pointer;
+    }
+    .export-buttons button:hover {
+      background-color: #0056b3;
+    }
+    #input-form {
+      margin-top: 20px;
+    }
+    #input-form input[type="text"],
+    #input-form input[type="number"] {
+      padding: 8px;
+      margin: 5px;
+      width: 200px;
+    }
+    #input-form button {
+      padding: 8px 12px;
+    }
+    #login-form {
+      text-align: center;
+      margin-top: 50px;
+    }
+    #login-form input {
+      padding: 10px;
+      margin: 5px;
+    }
+    .toggle-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Student Spending Dashboard</h1>
-    <p>Track. Visualize. Save smarter.</p>
-  </header>
 
-  <div class="container">
-    <h2>Spending Distribution</h2>
-    <canvas id="pieChart"></canvas>
+  <!-- Light/Dark Mode Toggle Button -->
+  <button class="toggle-btn" onclick="toggleDarkMode()">Toggle Dark Mode</button>
 
-    <h2>Monthly Expenses by Category</h2>
-    <canvas id="barChart"></canvas>
+  <h1>Student Spending Dashboard</h1>
 
-    <h2>Spending Over Time</h2>
-    <canvas id="lineChart"></canvas>
-
-    <div class="insights">
-      <h3>Smart Insights</h3>
-      <ul id="insightList"></ul>
-    </div>
+  <div id="login-form">
+    <h3>Please Log In</h3>
+    <input type="text" id="username" placeholder="Username" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="login()">Log In</button>
   </div>
 
+  <div id="dashboard" style="display: none;">
+    <canvas id="spendingChart"></canvas>
+    <div id="insights"></div>
+    <div class="export-buttons">
+      <button onclick="exportPDF()">Export as PDF</button>
+      <button onclick="exportCSV()">Export as CSV</button>
+    </div>
+
+    <form id="input-form">
+      <input type="text" id="category" placeholder="Category (e.g. Food)" required />
+      <input type="number" id="amount" placeholder="Amount" required />
+      <button type="submit">Add Expense</button>
+    </form>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    // Mock Data
-    const categories = ["Food", "Transport", "Subscriptions", "Entertainment", "Books", "Misc"];
-    const monthlySpending = [120, 60, 90, 70, 30, 40];
-    const spendingOverMonths = [
-      { month: "Jan", amount: 350 },
-      { month: "Feb", amount: 300 },
-      { month: "Mar", amount: 420 },
-      { month: "Apr", amount: 390 },
-    ];
+    const spendingData = {
+      labels: ["Food", "Transport", "Entertainment", "Education", "Other"],
+      datasets: [
+        {
+          label: "Spending ($)",
+          data: [120, 60, 90, 100, 40],
+          backgroundColor: ["#ff6384", "#36a2eb", "#ffce56", "#4bc0c0", "#9966ff"],
+        },
+      ],
+    };
 
-    // Pie Chart
-    new Chart(document.getElementById("pieChart"), {
-      type: "pie",
-      data: {
-        labels: categories,
-        datasets: [{
-          label: "Spending Distribution",
-          data: monthlySpending,
-          backgroundColor: ["#4B77BE", "#26A69A", "#F39C12", "#C0392B", "#8E44AD", "#95A5A6"]
-        }]
-      },
-      options: {
-        responsive: true
-      }
+    const ctx = document.getElementById("spendingChart").getContext("2d");
+    let spendingChart = new Chart(ctx, {
+      type: "doughnut",
+      data: spendingData,
     });
 
-    // Bar Chart
-    new Chart(document.getElementById("barChart"), {
-      type: "bar",
-      data: {
-        labels: categories,
-        datasets: [{
-          label: "Monthly Expenses ($)",
-          data: monthlySpending,
-          backgroundColor: "#4B77BE"
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          y: {
-            beginAtZero: true
-          }
+    function updateInsights() {
+      const insightsDiv = document.getElementById("insights");
+      const total = spendingData.datasets[0].data.reduce((a, b) => a + b, 0);
+      const tips = [];
+
+      spendingData.datasets[0].data.forEach((amount, index) => {
+        const category = spendingData.labels[index];
+        const percent = (amount / total) * 100;
+
+        if (percent > 40) {
+          tips.push(`High spending on <strong>${category}</strong>. Consider setting a limit or cheaper alternatives.`);
+        } else if (category === "Entertainment" && percent > 25) {
+          tips.push(`Entertainment takes up over 25%. Try lower-cost options like streaming or campus events.`);
+        } else if (category === "Transport" && percent > 20) {
+          tips.push(`Look into student transport discounts or shared rides to cut <strong>${category}</strong> costs.`);
         }
+      });
+
+      insightsDiv.innerHTML = "<h3>AI-Generated Insights</h3>" +
+        (tips.length ? tips.map(t => `<div class='insight'>${t}</div>`).join('') : "<div class='insight'>Great balance across categories!</div>");
+    }
+
+    function login() {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+
+      if (username && password) {
+        document.getElementById("login-form").style.display = "none";
+        document.getElementById("dashboard").style.display = "block";
+        updateInsights();
+      } else {
+        alert("Please enter a valid username and password.");
       }
+    }
+
+    document.getElementById("input-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const category = document.getElementById("category").value;
+      const amount = parseFloat(document.getElementById("amount").value);
+
+      const index = spendingData.labels.indexOf(category);
+      if (index > -1) {
+        spendingData.datasets[0].data[index] += amount;
+      } else {
+        spendingData.labels.push(category);
+        spendingData.datasets[0].data.push(amount);
+        spendingData.datasets[0].backgroundColor.push(
+          `hsl(${Math.random() * 360}, 70%, 70%)`
+        );
+      }
+
+      spendingChart.update();
+      updateInsights();
+      this.reset();
     });
 
-    // Line Chart
-    new Chart(document.getElementById("lineChart"), {
-      type: "line",
-      data: {
-        labels: spendingOverMonths.map(d => d.month),
-        datasets: [{
-          label: "Total Monthly Spending",
-          data: spendingOverMonths.map(d => d.amount),
-          borderColor: "#C0392B",
-          fill: false
-        }]
-      },
-      options: {
-        responsive: true,
-        tension: 0.3
-      }
-    });
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark-mode");
+    }
 
-    // Smart Insights (Basic AI-style logic)
-    const insightList = document.getElementById("insightList");
-    const total = monthlySpending.reduce((a, b) => a + b, 0);
+    function exportCSV() {
+      let csv = "Category,Amount\n";
+      spendingData.labels.forEach((label, i) => {
+        csv += `${label},${spendingData.datasets[0].data[i]}\n`;
+      });
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "spending_data.csv";
+      link.click();
+    }
 
-    monthlySpending.forEach((amt, i) => {
-      const percent = ((amt / total) * 100).toFixed(1);
-      if (percent > 25) {
-        const li = document.createElement("li");
-        li.textContent = `High spending on ${categories[i]} (${percent}%). Consider reducing to save more.`;
-        insightList.appendChild(li);
-      }
-    });
+    function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.text("Student Spending Report", 20, 20);
+
+      spendingData.labels.forEach((label, i) => {
+        doc.text(`${label}: $${spendingData.datasets[0].data[i]}`, 20, 30 + i * 10);
+      });
+
+      doc.save("spending_report.pdf");
+    }
   </script>
+
+  <div id="documentation">
+    <h2>Documentation</h2>
+    <p><strong>Project Name:</strong> Student Spending Dashboard</p>
+    <p><strong>Features:</strong></p>
+    <ul>
+      <li>Interactive Doughnut Chart with <code>Chart.js</code></li>
+      <li>Real-time insights based on spending patterns using simple AI logic</li>
+      <li>CSV and PDF Export functionality</li>
+      <li>Custom form to add user-defined spending categories and amounts</li>
+    </ul>
+    <p><strong>AI Logic:</strong> Insights are generated based on thresholds—categories exceeding 40% of total spending trigger cautionary tips. Entertainment or transport over a certain percent also provide suggestions. The logic is expandable and can be made smarter.</p>
+    <p><strong>Use Case:</strong> Designed for students to visualize and analyze their budgeting behavior. Encourages financial literacy and conscious spending habits.</p>
+  </div>
 </body>
 </html>
